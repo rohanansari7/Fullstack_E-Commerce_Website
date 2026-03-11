@@ -107,4 +107,80 @@ export const fetchAllProducts = catchAsyncError(async (req, res, next) => {
         value.push(`%${search}%`);
         index++;
     }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+
+    // get total filtered products count   
+    const totalProductsResult = await databaseConnection.query(
+        `SELECT COUNT(*) FROM products p ${whereClause}`,
+        value
+    );
+
+    const totalProducts = parseInt(totalProductsResult.rows[0].count);   
+
+    paginationPlaceholder.limit = `${index}`;
+    value.push(limit);
+    index++;
+
+    paginationPlaceholder.offset = `${index}`;
+    value.push(offset);
+    index++;
+
+    // Fetch Products with Reviews 
+    const query = `
+    SELECT 
+        p.*, 
+        COUNT(r.id) AS total_reviews
+        FROM products p
+        LEFT JOIN reviews r ON p.id = r.product_id
+        ${whereClause}
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
+        LIMIT $${paginationPlaceholder.limit} 
+        OFFSET $${paginationPlaceholder.offset}
+    `
+
+    const result = await databaseConnection.query(query, value);
+
+
+    // Fetch New Products with Reviews in last 21 days
+    const newProductsQuery = `
+    SELECT 
+        p.*, 
+        COUNT(r.id) AS total_reviews
+        FROM products p
+        LEFT JOIN reviews r ON p.id = r.product_id
+        WHERE p.created_at >= NOW() - INTERVAL '21 days'
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
+        LIMIT 9
+    `
+
+    const newProductsResult = await databaseConnection.query(newProductsQuery);
+
+    // Fetch Top Rated Products with Reviews(rating >= 4)
+    const topRatedProductsQuery = `
+    SELECT 
+        p.*,
+        COUNT(r.id) AS total_reviews,
+        AVG(r.rating) AS average_rating
+        FROM products p
+        LEFT JOIN reviews r ON p.id = r.product_id
+        WHERE r.rating >= 4
+        GROUP BY p.id
+        ORDER BY average_rating DESC, total_reviews DESC, p.created_at DESC
+        LIMIT 9
+    `
+
+    const topRatedProductsResult = await databaseConnection.query(topRatedProductsQuery);
+
+    res.status(200).json({
+        success: true,
+        products: result.rows,
+        totalProducts,
+        currentPage: page,
+        newProducts: newProductsResult.rows,
+        topRatedProducts: topRatedProductsResult.rows,
+    });
 });
