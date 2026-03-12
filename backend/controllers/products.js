@@ -48,7 +48,7 @@ export const createProduct = catchAsyncError(async (req, res, next) => {
                 $6, 
                 $7) 
                 RETURNING *`,
-        [name, description, price / 87, category, stock, JSON.stringify(uploadedImages), userId]
+        [name, description, price , category, stock, JSON.stringify(uploadedImages), userId]
     );
 
     const newProduct = productInsert.rows[0];
@@ -184,3 +184,5 @@ export const fetchAllProducts = catchAsyncError(async (req, res, next) => {
         topRatedProducts: topRatedProductsResult.rows,
     });
 });
+
+export const updateProduct = catchAsyncError(async (req, res, next) => {});
