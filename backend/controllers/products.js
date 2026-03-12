@@ -185,4 +185,77 @@ export const fetchAllProducts = catchAsyncError(async (req, res, next) => {
     });
 });
 
-export const updateProduct = catchAsyncError(async (req, res, next) => {});
+export const updateProduct = catchAsyncError(async (req, res, next) => {
+    const { productId } = req.params;
+    const { name, description, price, category, stock} = req.body;
+
+    if(!name || !description || !price || !category || !stock) {
+        return next(new ErrorHandler("Please provide all required fields", 400));
+    }
+
+    const productResult = await databaseConnection.query(
+        `SELECT * FROM products WHERE id = $1`,
+        [productId]
+    );
+
+    if(productResult.rows.length === 0) {
+        return next(new ErrorHandler("Product not found", 404));
+    }
+
+    const updatedProduct = await databaseConnection.query(
+        `UPDATE products SET 
+            name = $1, 
+            description = $2, 
+            price = $3, 
+            category = $4, 
+            stock = $5,
+            updated_at = NOW()
+        WHERE id = $6
+        RETURNING *`,
+        [name, description, price / 283, category, stock, productId]
+    );
+
+    res.status(200).json({
+        success: true,
+        message: "Product updated successfully",
+        product: updatedProduct.rows[0],
+    });
+
+});
+
+export const deleteProduct = catchAsyncError(async (req, res, next) => {
+    const { productId } = req.params;
+
+    const productResult = await databaseConnection.query(
+        `SELECT * FROM products WHERE id = $1`,
+        [productId]
+    );
+
+    if(productResult.rows.length === 0) {
+        return next(new ErrorHandler("Product not found", 404));
+    }
+
+    const images = productResult.rows[0].images;
+
+   const deleteProductResult = await databaseConnection.query(
+        `DELETE FROM products WHERE id = $1 RETURNING *`,
+        [productId]
+    );
+
+    if(deleteProductResult.rows.length === 0) {
+        return next(new ErrorHandler("Failed to delete product", 500));
+    }
+
+    if(images && images.length > 0) {
+        for(const image of images) {
+            await cloudinary.uploader.destroy(image.public_id);
+        }
+    };
+
+
+    res.status(200).json({
+        success: true,
+        message: "Product deleted successfully",
+        deletedProduct: deleteProductResult.rows[0],
+    });
+});
