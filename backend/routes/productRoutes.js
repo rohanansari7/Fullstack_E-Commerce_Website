@@ -1,6 +1,6 @@
 import express from "express"
 import { isAuthenticated, authorizeRoles } from "../middlewares/authMiddleware.js"
-import { createProduct, fetchAllProducts, updateProduct, deleteProduct } from "../controllers/products.js"
+import { createProduct, fetchAllProducts, updateProduct, deleteProduct, singleProductDetails } from "../controllers/products.js"
 
 
 const router = express.Router()
@@ -258,5 +258,30 @@ router.put("/admin/update-product/:productId", isAuthenticated, authorizeRoles("
  *         description: Failed to delete product
  */
 router.delete("/admin/delete-product/:productId", isAuthenticated, authorizeRoles("Admin"), deleteProduct)
+/**
+ * @swagger
+ * /api/v1/products/single-product-details/{productId}:
+ *   get:
+ *     summary: Get single product details
+ *     description: Retrieve a product by its ID along with all associated reviews and reviewer information.
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         description: The UUID of the product to retrieve
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *           example: "123e4567-e89b-12d3-a456-426614174000"
+ *     responses:
+ *       200:
+ *         description: Product details fetched successfully
+ *       404:
+ *         description: Product not found
+ *       500:
+ *         description: Server error
+ */
+router.get("/single-product-details/:productId", singleProductDetails)
 
 export default router;

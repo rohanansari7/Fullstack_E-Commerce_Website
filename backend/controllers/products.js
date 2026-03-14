@@ -259,3 +259,40 @@ export const deleteProduct = catchAsyncError(async (req, res, next) => {
         deletedProduct: deleteProductResult.rows[0],
     });
 });
+
+export const singleProductDetails = catchAsyncError(async (req, res, next) => {
+    const { productId } = req.params;
+
+    const productResult = await databaseConnection.query(
+        `
+        SELECT p.*,
+        COALESCE(
+        json_agg(
+        json_build_object(
+            'review_id', r.id,
+            'rating', r.rating,
+            'comment', r.comment,
+            'reviewer', json_build_object(
+                'id', u.id,
+                'name', u.name,
+                'avatar', u.avatar
+            )
+        )) FILTER (WHERE r.id IS NOT NULL), '[]') AS reviews
+        FROM products p 
+        LEFT JOIN reviews r ON p.id = r.product_id
+        LEFT JOIN users u ON r.user_id = u.id
+        WHERE p.id = $1
+        GROUP BY p.id
+        `,
+        [productId]
+    );
+
+    if(productResult.rows.length === 0) {
+        return next(new ErrorHandler("Product not found", 404));
+    }
+
+    res.status(200).json({
+        success: true,
+        product: productResult.rows[0],
+    });
+});
