@@ -296,3 +296,123 @@ export const singleProductDetails = catchAsyncError(async (req, res, next) => {
         product: productResult.rows[0],
     });
 });
+
+export const sendProductReviews = catchAsyncError(async (req, res, next) => {
+    const { productId } = req.params;
+    const { rating, comment } = req.body;
+    const userId = req.user.id;
+
+    if(!rating || !comment) {
+        return next(new ErrorHandler("Please provide all required fields", 400));
+    }
+
+    const purchaseCheckResult = `
+        SELECT oi.product_id 
+        FROM order_items oi
+        LEFT JOIN orders o On o.id = oi.order_id
+        LEFT JOIN payments P ON p.order_id = o.id
+        WHERE oi.product_id = $1 AND o.buyer_id = $2 AND p.payment_status = 'Paid'
+        LIMIT 1
+        `;
+
+        const { rows } = await databaseConnection.query(purchaseCheckResult, [productId, userId]);
+
+        if(rows.length === 0) {
+            return res.status(403).json({
+                success: false,
+                message: "You can only review products you have purchased",
+            });
+            //return next(new ErrorHandler("You can only review products you have purchased", 403));
+        }
+
+        const product = await databaseConnection.query(
+            `SELECT * FROM products WHERE id = $1`,
+            [productId]
+        );
+
+        if(product.rows.length === 0) {
+            return next(new ErrorHandler("Product not found", 404));
+        }
+
+        const alreadyReviewedResult = await databaseConnection.query(
+            `SELECT * FROM reviews WHERE product_id = $1 AND user_id = $2`,
+            [productId, userId]
+        );
+
+        // if(alreadyReviewedResult.rows.length > 0) {
+        //     return res.status(400).json({
+        //         success: false,
+        //         message: "You have already reviewed this product",
+        //     });
+        // }
+
+        let review;
+
+        if(alreadyReviewedResult.rows.length > 0) {
+            review = await databaseConnection.query(
+                `UPDATE reviews SET rating = $1, comment = $2 WHERE product_id = $3 AND user_id = $4 RETURNING *`,
+                [rating, comment, productId, userId]
+            );
+        } else {
+             review = await databaseConnection.query(
+                `INSERT INTO reviews (product_id, user_id, rating, comment) VALUES ($1, $2, $3, $4) RETURNING *`,
+                [productId, userId, rating, comment]
+            );
+        }
+        
+        const allReviewsResult = await databaseConnection.query(
+            `SELECT AVG(rating) AS avg_rating FROM reviews WHERE product_id = $1`,
+            [productId]
+        );
+
+        const avgRating = allReviewsResult.rows[0].avg_rating;
+
+        const updateProduct = await databaseConnection.query(
+            `UPDATE products SET ratings = $1 WHERE id = $2 RETURNING *`,
+            [avgRating, productId]
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Review submitted successfully",
+            review: review.rows[0],
+            product : updateProduct.rows[0],
+        });
+     
+
+});
+
+export const deleteReviews = catchAsyncError(async (req, res, next) => {
+    const { productId } = req.params;
+    const userId = req.user.id;
+
+
+    const reviewResult = await databaseConnection.query(
+        `DELETE FROM reviews WHERE product_id = $1 AND user_id = $2 RETURNING *`,
+        [productId, userId]
+    );
+
+    if(reviewResult.rows.length === 0) {
+        return next(new ErrorHandler("Review not found", 404));
+    }
+
+    const allReviewsResult = await databaseConnection.query(
+        `SELECT AVG(rating) AS avg_rating FROM reviews WHERE product_id = $1`,
+        [productId]
+    );
+
+    const avgRating = allReviewsResult.rows[0].avg_rating || 0;
+
+    const updateProduct = await databaseConnection.query(
+        `UPDATE products SET ratings = $1 WHERE id = $2 RETURNING *`,
+        [avgRating, productId]
+    );
+
+    res.status(200).json({
+        success: true,
+        message: "Review deleted successfully",
+        deletedReview: reviewResult.rows[0],
+        product : updateProduct.rows[0],
+    });
+    
+});

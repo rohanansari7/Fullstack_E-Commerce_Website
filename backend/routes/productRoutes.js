@@ -1,6 +1,6 @@
 import express from "express"
 import { isAuthenticated, authorizeRoles } from "../middlewares/authMiddleware.js"
-import { createProduct, fetchAllProducts, updateProduct, deleteProduct, singleProductDetails } from "../controllers/products.js"
+import { createProduct, fetchAllProducts, updateProduct, deleteProduct, singleProductDetails, sendProductReviews, deleteReviews } from "../controllers/products.js"
 
 
 const router = express.Router()
@@ -283,5 +283,120 @@ router.delete("/admin/delete-product/:productId", isAuthenticated, authorizeRole
  *         description: Server error
  */
 router.get("/single-product-details/:productId", singleProductDetails)
+/**
+ * @swagger
+ * /api/v1/products/submit-review/{productId}:
+ *   post:
+ *     summary: Create or update a product review
+ *     description: |
+ *       Allows a logged-in user to submit or update a review for a product.
+ *       User must have purchased the product (payment status must be 'Paid').
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         description: Product UUID
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         example: f37f36d3-8d09-41f1-a9bc-ac9ee508ea8f
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - rating
+ *               - comment
+ *             properties:
+ *               rating:
+ *                 type: number
+ *                 format: float
+ *                 example: 4.5
+ *               comment:
+ *                 type: string
+ *                 example: "Great product, worth the price!"
+ *     responses:
+ *       200:
+ *         description: Review submitted or updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Review submitted successfully
+ *                 review:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                       example: 9c1f7b52-1234-4a2b-9abc-123456789abc
+ *                     product_id:
+ *                       type: string
+ *                       format: uuid
+ *                       example: f37f36d3-8d09-41f1-a9bc-ac9ee508ea8f
+ *                     user_id:
+ *                       type: string
+ *                       format: uuid
+ *                       example: a12b34c5-6789-4def-9012-abcdef123456
+ *                     rating:
+ *                       type: number
+ *                       example: 4.5
+ *                     comment:
+ *                       type: string
+ *                       example: Great product!
+ *                 product:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                       example: f37f36d3-8d09-41f1-a9bc-ac9ee508ea8f
+ *                     ratings:
+ *                       type: number
+ *                       example: 4.2
+ *       400:
+ *         description: Missing required fields
+ *       403:
+ *         description: User has not purchased the product
+ *       404:
+ *         description: Product not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post("/submit-review/:productId", isAuthenticated, sendProductReviews)
+/**
+ * @swagger
+ * /api/v1/products/delete-review/{productId}:
+ *   delete:
+ *     summary: Delete review
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         example: f37f36d3-8d09-41f1-a9bc-ac9ee508ea8f
+ *     responses:
+ *       200:
+ *         description: Review deleted successfully
+ *       404:
+ *         description: Review not found
+ */
+router.delete("/delete/review/:productId", isAuthenticated, deleteReviews)
 
 export default router;
