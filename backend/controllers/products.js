@@ -414,5 +414,129 @@ export const deleteReviews = catchAsyncError(async (req, res, next) => {
         deletedReview: reviewResult.rows[0],
         product : updateProduct.rows[0],
     });
+
+});
+
+export const fetchAiGeneratedProducts = catchAsyncError(async (req, res, next) => {
+    const { userPrompt } = req.body;
+
+    if(!userPrompt) {
+        return next(new ErrorHandler("Please provide a prompt", 400));
+    }
+
+    const filteredProduct = (query) => {
+        const stopWords = new Set([
+            "the",
+        "they",
+        "them",
+        "then",
+        "I",
+        "we",
+        "you",
+        "he",
+        "she",
+        "it",
+        "is",
+        "a",
+        "an",
+        "of",
+        "and",
+        "or",
+        "to",
+        "for",
+        "from",
+        "on",
+        "who",
+        "whom",
+        "why",
+        "when",
+        "which",
+        "with",
+        "this",
+        "that",
+        "in",
+        "at",
+        "by",
+        "be",
+        "not",
+        "was",
+        "were",
+        "has",
+        "have",
+        "had",
+        "do",
+        "does",
+        "did",
+        "so",
+        "some",
+        "any",
+        "how",
+        "can",
+        "could",
+        "should",
+        "would",
+        "there",
+        "here",
+        "just",
+        "than",
+        "because",
+        "but",
+        "its",
+        "it's",
+        "if",
+        ".",
+        ",",
+        "!",
+        "?",
+        ">",
+        "<",
+        ";",
+        "`",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        ])
+
+        return query.toLowerCase().replace(/[^\w\s]/g, "").split(/\s+/).filter((word) => !stopWords.has(word)).map((word) => `%${word}%`);
+
+    }
+
+    const keyWords = filteredProduct(userPrompt);
+
+    if(keyWords.length === 0) {
+        return next(new ErrorHandler("Please provide a more descriptive prompt", 400));
+    }
+
+    const query = `
+    SELECT * FROM products
+    WHERE name ILIKE ANY($1) OR description ILIKE ANY($1) OR category ILIKE ANY($1)
+    lIMIT 50
+    `;
+
+    const result = await databaseConnection.query(query, [keyWords]);
+
+    if(result.rows.length === 0) {
+        return res.status(200).json({
+            success: true,
+            message: "No products found matching your prompt",
+            products: [],
+        });
+    }  
+    
+    // AI Generated Product Logic
+    const { success, products } = await getAIRecommendation(req, res, userPrompt, filteredProduct)
+
+    res.status(200).json({
+        success: success,
+        message: "AI Generated Products are Below",
+        products
+    });
     
 });

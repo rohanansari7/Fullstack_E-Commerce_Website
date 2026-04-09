@@ -7,6 +7,7 @@ import { createAllTables } from "./utils/createAllTables.js"
 import { handleError} from './middlewares/errorMiddleware.js'
 import authRoutes from "./routes/authRoutes.js"
 import productRoutes from "./routes/productRoutes.js"
+import adminRoutes from "./routes/adminRoutes.js"
 import swaggerUi from "swagger-ui-express"
 import swaggerJsdocs from "swagger-jsdoc"
 config({path: "./config/config.env"})
@@ -29,6 +30,7 @@ app.use(fileUpload({
 
 app.use("/api/v1/auth", authRoutes)
 app.use("/api/v1/products", productRoutes)
+app.use("/api/v1/admin", adminRoutes)
 
 createAllTables();
 
