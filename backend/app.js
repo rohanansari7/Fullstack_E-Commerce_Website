@@ -47,7 +47,7 @@ const options = {
         servers: [{url: "http://localhost:4000"}], // Swagger UI will use this as the base URL for API requests        
     },
     components: {
-        securituSchemes: {
+        securitySchemes: {
             bearerAuth: {
                 type: "http",
                 scheme: "bearer",
