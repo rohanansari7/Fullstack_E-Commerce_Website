@@ -1,9 +1,10 @@
 import databaseConnection from "../database/db.js";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-export async function generatePaymentIntent(amount, currency, orderId, total_price) {
+const stripe = Stripe("sk_test_51OvwyjSIDgmpKWon1fuxeau8poRUV8vOEWuDnKxNjp8cXNmLID4GRkbjPokvh8YhRH4rpiFVf2ONRuhzYYHl0Sbr00IzUALaqU");
+
+export async function generatePaymentIntent(orderId, total_price) {    
     try {
         const paymentIntent = await stripe.paymentIntents.create({
             amount: total_price * 100, // Convert to cents
@@ -22,7 +23,7 @@ export async function generatePaymentIntent(amount, currency, orderId, total_pri
                 $2, 
                 $3, 
                 $4)
-            `, [orderId, 'Online', 'Pending', paymentIntent.client_secret]);
+            `, [orderId, 'Online', 'Pending', paymentIntent.id]);
 
             return { success: true, clientSecret: paymentIntent.client_secret };
     } catch (error) {
