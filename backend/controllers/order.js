@@ -52,10 +52,10 @@ export const createNewOrder = catchAsyncError(async (req, res, next) => {
         placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6})`);
     });
     
-    const shipping_price = 2;
-    const tax_price = 0.008;
+    const shipping_price = total_price >= 50 ? 0 : 2;
+    const tax_price = 0.18;
 
-    const total_price = Math.round( totalPrice + totalPrice * tax_price + shipping_price);
+    totalPrice = Math.round( totalPrice + totalPrice * tax_price + shipping_price);
 
     const orderResult = await databaseConnection.query(`
         INSERT INTO orders (
@@ -69,7 +69,7 @@ export const createNewOrder = catchAsyncError(async (req, res, next) => {
         $3, 
         $4
         ) RETURNING id
-    `, [userId, total_price, tax_price, shipping_price]);
+    `, [userId, totalPrice, tax_price, shipping_price]);
 
     const orderId = orderResult.rows[0].id;
 
